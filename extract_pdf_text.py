@@ -73,6 +73,14 @@ def group_elements_into_paragraphs(elements):
         if not element_text:
             continue
             
+        # Skip tables and figures (including captions) using unstructured element types
+        if element_type in ['Table', 'FigureCaption', 'Image']:
+            # Finish current paragraph but don't add the table/figure content
+            if current_paragraph:
+                paragraphs.append(' '.join(current_paragraph))
+                current_paragraph = []
+            continue
+            
         # Skip mathematical formulas and equations
         if is_formula_or_equation(element_text):
             continue
@@ -105,7 +113,8 @@ def group_elements_into_paragraphs(elements):
             else:
                 current_paragraph.append(element_text)
         
-        # For other elements (lists, tables, etc.), treat as separate paragraphs
+        # For other elements (lists, etc.), treat as separate paragraphs
+        # But skip if they're table-related
         else:
             if current_paragraph:
                 paragraphs.append(' '.join(current_paragraph))
