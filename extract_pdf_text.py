@@ -45,23 +45,31 @@ def is_formula_or_equation(text: str) -> bool:
 
 def clean_text(text: str) -> str:
     """Clean and fix common PDF extraction issues in academic papers."""
-    # Fix hyphenated words (handles various patterns)
+    # Enhanced hyphen handling for academic papers
     text = re.sub(r'(\w)-\s+(\w)', r'\1\2', text)  # Fix "word- word" -> "wordword"
     text = re.sub(r'(\w)-\s*\n\s*(\w)', r'\1\2', text)  # Fix hyphenated across lines
+    text = re.sub(r'(\w)-\n(\w)', r'\1\2', text)  # Handle line break hyphens
+    
+    # Remove common footer patterns
+    text = re.sub(r'\n\s*\d+\s*$', '', text)  # Remove trailing page numbers
+    text = re.sub(r'\n\s*[\d\-–—]+\s*$', '', text)  # Remove footer separators
     
     # Fix common PDF extraction issues
     text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Fix merged words like "wordWord"
     text = re.sub(r'\s+', ' ', text)  # Normalize whitespace (after hyphen fixes)
-    
+        
     # Preserve academic formatting
     text = re.sub(r'\n\s*•\s*', '\n• ', text)  # Fix bullet points
     text = re.sub(r'\n\s*(\d+\.)\s*', r'\n\1 ', text)  # Fix numbered lists
+    
+    # Clean up multiple spaces
+    text = re.sub(r'\s{2,}', ' ', text)  # Multiple spaces to single space
     
     return text.strip()
 
 
 def group_elements_into_paragraphs(elements):
-    """Group elements into paragraphs based on their types and content."""
+    """Group elements into paragraphs based on their types and content, following unstructured best practices."""
     paragraphs = []
     current_paragraph = []
     
@@ -73,53 +81,41 @@ def group_elements_into_paragraphs(elements):
         if not element_text:
             continue
             
-        # Skip tables and figures (including captions) using unstructured element types
-        if element_type in ['Table', 'FigureCaption', 'Image']:
-            # Finish current paragraph but don't add the table/figure content
-            if current_paragraph:
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = []
-            continue
-            
         # Skip mathematical formulas and equations
         if is_formula_or_equation(element_text):
             continue
             
-        # Titles and headers should be on their own lines
-        if element_type in ['Title', 'Header']:
+        # Process elements based on unstructured best practices
+        if element_type == 'NarrativeText':
+            # Each NarrativeText element becomes its own paragraph to preserve natural breaks
+            if current_paragraph:
+                paragraphs.append(' '.join(current_paragraph))
+                current_paragraph = []
+            paragraphs.append(element_text)
+            
+        elif element_type in ['Title', 'Header']:
             # Finish current paragraph first
             if current_paragraph:
                 paragraphs.append(' '.join(current_paragraph))
                 current_paragraph = []
             # Add title/header as its own paragraph
             paragraphs.append(element_text)
-        
-        # Page breaks - just finish current paragraph, don't add content
-        elif element_type == 'PageBreak':
-            if current_paragraph:
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = []
-        
-        # For regular text, continue building current paragraph or start new one
-        elif element_type in ['Text', 'NarrativeText']:
-            # If this looks like a new paragraph (starts with capital, ends with period)
-            # and we have existing content, start new paragraph
-            if (current_paragraph and 
-                len(element_text) > 50 and  # Substantial text
-                element_text[0].isupper() and  # Starts with capital
-                current_paragraph[-1].endswith(('.', '!', '?'))):
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = [element_text]
-            else:
-                current_paragraph.append(element_text)
-        
-        # For other elements (lists, etc.), treat as separate paragraphs
-        # But skip if they're table-related
-        else:
+            
+        elif element_type == 'ListItem':
+            # Keep list items for document structure
             if current_paragraph:
                 paragraphs.append(' '.join(current_paragraph))
                 current_paragraph = []
             paragraphs.append(element_text)
+            
+        elif element_type == 'PageBreak':
+            # Finish current paragraph at page breaks
+            if current_paragraph:
+                paragraphs.append(' '.join(current_paragraph))
+                current_paragraph = []
+                
+        # Skip tables, figures, captions, etc. (everything else that's not core narrative)
+        # This automatically filters out Table, FigureCaption, Image, etc.
     
     # Add any remaining content
     if current_paragraph:
@@ -145,7 +141,7 @@ def process_pdf(pdf_path: Path, output_dir: Path) -> None:
         # Group elements into paragraphs
         paragraphs = group_elements_into_paragraphs(elements)
         
-        # Save plain text output with cleaning - one paragraph per line
+        # Save plain text output with cleaning - each paragraph on its own line with blank line between
         text_output_file = output_dir / f"{pdf_path.stem}.txt"
         with open(text_output_file, 'w', encoding='utf-8') as f:
             f.write(f"# {pdf_path.name}\n\n")
