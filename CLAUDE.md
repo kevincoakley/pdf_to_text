@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Python tool for extracting high-quality text from academic PDF papers using the `unstructured` library. The tool is optimized specifically for academic papers and conference proceedings, using high-resolution extraction strategies to preserve document structure, tables, and formatting.
+This is a Python tool for extracting high-quality text from academic PDF papers using the `PyMuPDF` (fitz) library. The tool is optimized specifically for academic papers and conference proceedings, using block-based text extraction to preserve document structure and formatting while removing non-Latin characters and symbols.
 
 ## Architecture
 
@@ -16,17 +16,14 @@ The project follows a simple, single-script architecture:
 
 ## Key Dependencies
 
-- **System dependency**: `poppler` (install via `brew install poppler`)
-- **Python**: Requires 3.9+ for `unstructured` library compatibility
+- **PyMuPDF**: Core PDF text extraction library
+- **Python**: Requires 3.9+ for PyMuPDF compatibility
 - **Package manager**: Uses `uv` for dependency management
 
 ## Common Commands
 
 ### Setup and Installation
 ```bash
-# Install system dependency
-brew install poppler
-
 # Install Python dependencies
 uv sync
 ```
@@ -46,10 +43,10 @@ uv add package_name
 ## Extraction Configuration
 
 The tool is configured for academic papers with these settings:
-- **Strategy**: `hi_res` for maximum quality
-- **Table structure**: Enabled to preserve academic tables
-- **Image extraction**: Disabled (text-focused)
-- **Chunking**: Title-based to maintain document hierarchy
+- **Block-based extraction**: Uses PyMuPDF's text block structure for better organization
+- **Character filtering**: Removes non-Latin characters and symbols while preserving letters, numbers, and punctuation
+- **Text cleaning**: Fixes common PDF extraction issues like hyphenation and spacing
+- **LLM-optimized**: Output is optimized for LLM analysis and processing
 
 ## Output Structure
 

@@ -1,14 +1,14 @@
 # PDF to Text Extractor
 
-A high-quality Python tool for extracting structured text from academic PDF papers using the `unstructured` library. Optimized for academic papers with advanced text processing capabilities including section detection, table structure preservation, and coordinate tracking.
+A high-quality Python tool for extracting clean text from academic PDF papers using the `PyMuPDF` (fitz) library. Optimized for academic papers with advanced text processing that removes non-Latin characters and symbols while preserving document structure for LLM analysis.
 
 ## Features
 
-- **High-Quality Text Extraction**: Uses `hi_res` strategy for maximum accuracy on academic papers
-- **Clean Text Output**: Generates TXT files with structured, readable text
-- **Table Structure Preservation**: Maintains table formatting and structure
-- **Section/Heading Detection**: Automatically identifies and preserves document structure
-- **Coordinate Tracking**: Includes precise text positioning information
+- **High-Quality Text Extraction**: Uses PyMuPDF's block-based extraction for accurate text recovery
+- **LLM-Optimized Output**: Removes non-Latin characters and symbols while preserving meaningful content
+- **Clean Text Processing**: Fixes common PDF extraction issues like hyphenation and spacing
+- **Document Structure**: Preserves titles, sections, and paragraph organization
+- **Character Filtering**: Keeps only letters, numbers, and standard punctuation for better LLM analysis
 - **Batch Processing**: Processes all PDFs in the `pdf/` directory automatically
 - **Robust Error Handling**: Continues processing even if individual files fail
 - **Academic Paper Optimized**: Specifically tuned for conference papers and academic documents
@@ -17,30 +17,17 @@ A high-quality Python tool for extracting structured text from academic PDF pape
 
 This project uses the following key dependencies:
 
-- **unstructured[pdf]** - Advanced PDF text extraction library
-- **pillow** - Image processing support
-- **pdfminer.six** - PDF parsing capabilities  
-- **python-magic** - File type detection
-- **pdf2image** - PDF to image conversion
-- **poppler** - System dependency for PDF processing (installed via Homebrew)
+- **PyMuPDF** - High-performance PDF text extraction library
+- **Python 3.9+** - Required for PyMuPDF compatibility
 
 ## System Requirements
 
 - **Python**: 3.9 or higher
-- **macOS**: Homebrew for installing system dependencies
-- **poppler**: Required system library for PDF processing
+- **PyMuPDF**: Installed automatically via uv
 
 ## Installation
 
-### 1. Install System Dependencies
-
-First, install poppler using Homebrew:
-
-```bash
-brew install poppler
-```
-
-### 2. Install Python Dependencies
+### Install Python Dependencies
 
 Using the UV package manager (recommended):
 
@@ -94,37 +81,32 @@ The field of research...
 
 ## Configuration
 
-The extraction is configured for high-quality academic paper processing with these settings:
+The extraction is configured for LLM-optimized academic paper processing with these settings:
 
-- **Strategy**: `hi_res` - Highest quality extraction
-- **Table Structure**: Enabled - Preserves table formatting
-- **Image Extraction**: Disabled - Focuses on text content
-- **Page Breaks**: Included - Maintains document structure
+- **Block-based Extraction**: Uses PyMuPDF's text block structure for better organization
+- **Character Filtering**: Removes non-Latin characters and symbols while preserving content
+- **Text Cleaning**: Fixes hyphenation, spacing, and common PDF extraction issues
+- **Document Structure**: Maintains titles, sections, and paragraph breaks
 
 ## Performance
 
-- **Processing Speed**: ~2-3 minutes per PDF (varies by complexity)
-- **Quality**: Optimized for academic papers with complex formatting
-- **Memory Usage**: Moderate - suitable for batch processing
+- **Processing Speed**: Fast - PyMuPDF is significantly faster than other libraries
+- **Quality**: Optimized for academic papers with clean, LLM-ready output
+- **Memory Usage**: Low - efficient processing suitable for large batches
 - **Error Handling**: Robust - continues processing if individual files fail
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Unable to get page count. Is poppler installed?"**
-   ```bash
-   brew install poppler
-   ```
-
-2. **Import errors with unstructured**
+1. **Import errors with PyMuPDF**
    ```bash
    uv sync  # Reinstall dependencies
    ```
 
-3. **Memory issues with large PDFs**
-   - Process PDFs in smaller batches
-   - Consider using `fast` strategy for very large files
+2. **Processing very large PDFs**
+   - PyMuPDF handles large files efficiently
+   - No special configuration needed
 
 ### Logs and Output
 

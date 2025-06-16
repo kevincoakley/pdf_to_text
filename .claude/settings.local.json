@@ -3,7 +3,9 @@
     "allow": [
       "Bash(uv add:*)",
       "Bash(uv run:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(rm:*)",
+      "Bash(uv remove:*)"
     ],
     "deny": []
   }

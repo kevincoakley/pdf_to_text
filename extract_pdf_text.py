@@ -1,46 +1,25 @@
 #!/usr/bin/env python3
 """
-Extract high-quality text from academic PDF papers using unstructured library.
+Extract text from academic PDF papers using PyMuPDF (fitz) library.
 Processes all PDFs in the pdf/ directory and saves results to results/ directory.
 """
 
 import os
 import re
 from pathlib import Path
-from unstructured.partition.pdf import partition_pdf
+import fitz  # PyMuPDF
 
 
-def is_formula_or_equation(text: str) -> bool:
-    """Detect if text contains mathematical formulas or equations."""
-    # Skip short text that's unlikely to be standalone formulas
-    if len(text.strip()) < 5:
-        return False
+def clean_non_latin_chars(text: str) -> str:
+    """Remove non-Latin characters and symbols while preserving letters, numbers, and punctuation."""
+    # Keep only Latin letters, numbers, and standard punctuation
+    # This preserves content for LLM analysis while removing symbols and non-Latin characters
+    cleaned = re.sub(r'[^\w\s.,;:!?()[\]{}"\'-]', ' ', text)
     
-    # Common math indicators
-    math_patterns = [
-        r'\b[a-zA-Z]\s*[=<>≤≥≠]',  # Variables with operators (a = b, x ≤ y)
-        r'\([0-9]+\)',              # Numbered equations like (1), (2)
-        r'∑|∏|∫|∂|∇|α|β|γ|δ|ε|θ|λ|μ|π|σ|τ|φ|ψ|ω',  # Math symbols
-        r'\b(exp|log|sin|cos|tan|max|min|argmax|argmin)\s*\(',  # Math functions
-        r'p\s*\([^)]*\)\s*[=<>]',   # Probability notation p(x) =
-        r'\bEq\.?\s*[0-9]',        # Equation references
-        r'\bmult\s*\(',            # Multinomial functions
-        r'Z[αβγδε]|Z_',            # Normalization constants
-        r'[A-Z][A-Za-z]*\s*[⇠∼]',  # Distribution notation A ~ 
-        r'\b[A-Z][a-z]*\s*=\s*argmax',  # Optimization notation
-    ]
+    # Clean up multiple spaces created by character removal
+    cleaned = re.sub(r'\s+', ' ', cleaned)
     
-    # Check for math patterns
-    for pattern in math_patterns:
-        if re.search(pattern, text):
-            return True
-    
-    # Check for high density of mathematical characters
-    math_chars = len(re.findall(r'[=<>≤≥≠∑∏∫∂∇αβγδεθλμπστφψω⇠∼]', text))
-    if len(text) > 0 and math_chars / len(text) > 0.1:  # More than 10% math symbols
-        return True
-    
-    return False
+    return cleaned.strip()
 
 
 def clean_text(text: str) -> str:
@@ -68,89 +47,60 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def group_elements_into_paragraphs(elements):
-    """Group elements into paragraphs based on their types and content, following unstructured best practices."""
-    paragraphs = []
-    current_paragraph = []
+def extract_text_blocks(doc):
+    """Extract text blocks from PDF document, filtering and cleaning as needed."""
+    text_blocks = []
     
-    for element in elements:
-        element_type = str(type(element).__name__)
-        element_text = str(element).strip()
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
         
-        # Skip empty elements
-        if not element_text:
-            continue
-            
-        # Skip mathematical formulas and equations
-        if is_formula_or_equation(element_text):
-            continue
-            
-        # Process elements based on unstructured best practices
-        if element_type == 'NarrativeText':
-            # Each NarrativeText element becomes its own paragraph to preserve natural breaks
-            if current_paragraph:
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = []
-            paragraphs.append(element_text)
-            
-        elif element_type in ['Title', 'Header']:
-            # Finish current paragraph first
-            if current_paragraph:
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = []
-            # Add title/header as its own paragraph
-            paragraphs.append(element_text)
-            
-        elif element_type == 'ListItem':
-            # Keep list items for document structure
-            if current_paragraph:
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = []
-            paragraphs.append(element_text)
-            
-        elif element_type == 'PageBreak':
-            # Finish current paragraph at page breaks
-            if current_paragraph:
-                paragraphs.append(' '.join(current_paragraph))
-                current_paragraph = []
+        # Get text blocks with positioning info
+        blocks = page.get_text("dict")
+        
+        for block in blocks["blocks"]:
+            if "lines" in block:  # Text block
+                block_text = ""
+                for line in block["lines"]:
+                    line_text = ""
+                    for span in line["spans"]:
+                        line_text += span["text"]
+                    block_text += line_text + " "
                 
-        # Skip tables, figures, captions, etc. (everything else that's not core narrative)
-        # This automatically filters out Table, FigureCaption, Image, etc.
+                # Clean the block text
+                block_text = block_text.strip()
+                if block_text:
+                    # Apply character cleaning
+                    cleaned_block = clean_non_latin_chars(block_text)
+                    
+                    # Skip if cleaning removed all meaningful content
+                    if cleaned_block and len(cleaned_block.strip()) > 3:
+                        text_blocks.append(cleaned_block)
     
-    # Add any remaining content
-    if current_paragraph:
-        paragraphs.append(' '.join(current_paragraph))
-    
-    return paragraphs
+    return text_blocks
 
 
 def process_pdf(pdf_path: Path, output_dir: Path) -> None:
-    """Process a single PDF file and extract structured text."""
+    """Process a single PDF file and extract text using PyMuPDF."""
     print(f"Processing: {pdf_path.name}")
     
     try:
-        # Use high-quality extraction strategy for academic papers
-        elements = partition_pdf(
-            filename=str(pdf_path),
-            strategy="hi_res",  # High resolution for better quality
-            infer_table_structure=True,  # Extract table structure
-            extract_images_in_pdf=False,  # Focus on text, not images
-            include_page_breaks=True,  # Preserve page structure
-        )
+        # Open PDF with PyMuPDF
+        doc = fitz.open(str(pdf_path))
         
-        # Group elements into paragraphs
-        paragraphs = group_elements_into_paragraphs(elements)
+        # Extract text blocks
+        text_blocks = extract_text_blocks(doc)
         
-        # Save plain text output with cleaning - each paragraph on its own line with blank line between
+        # Close the document
+        doc.close()
+        
+        # Save plain text output
         text_output_file = output_dir / f"{pdf_path.stem}.txt"
         with open(text_output_file, 'w', encoding='utf-8') as f:
             f.write(f"# {pdf_path.name}\n\n")
-            for paragraph in paragraphs:
-                cleaned_text = clean_text(paragraph)
-                # Skip if it's a formula or too short
-                if (cleaned_text and 
-                    len(cleaned_text) > 10 and 
-                    not is_formula_or_equation(cleaned_text)):
+            for block in text_blocks:
+                cleaned_text = clean_text(block)
+                # Skip if too short after cleaning
+                if cleaned_text and len(cleaned_text) > 10:
                     f.write(cleaned_text + "\n\n")
         
         print(f"✓ Completed: {pdf_path.name} -> {text_output_file.name}")
@@ -160,7 +110,7 @@ def process_pdf(pdf_path: Path, output_dir: Path) -> None:
 
 
 def main():
-    """Main function to process all PDFs in the pdf directory."""
+    """Main function to process all PDFs in the pdf directory using PyMuPDF."""
     # Set up directories
     pdf_dir = Path("pdf")
     output_dir = Path("results")
