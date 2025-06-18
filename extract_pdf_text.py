@@ -11,10 +11,12 @@ import fitz  # PyMuPDF
 
 
 def clean_non_latin_chars(text: str) -> str:
-    """Remove non-Latin characters and symbols while preserving letters, numbers, and punctuation."""
-    # Keep only Latin letters, numbers, and standard punctuation
-    # This preserves content for LLM analysis while removing symbols and non-Latin characters
-    cleaned = re.sub(r'[^\w\s.,;:!?()[\]{}"\'-]', ' ', text)
+    """Remove non-Latin characters and symbols while preserving letters, numbers, punctuation, and useful symbols."""
+    # Keep Latin letters, numbers, standard punctuation, and useful symbols:
+    # - Email/web: @ # / \ . _
+    # - Math: + - * = % < > 
+    # - Other useful: & $ | ~
+    cleaned = re.sub(r'[^\w\s.,;:!?()[\]{}"\'-@#/\\._+\-*=%<>&$|~]', ' ', text)
     
     # Clean up multiple spaces created by character removal
     cleaned = re.sub(r'\s+', ' ', cleaned)
