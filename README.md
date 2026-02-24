@@ -1,28 +1,22 @@
 # PDF to Text Extractor
 
-## Dependencies
-
-This project uses the following key dependencies:
-
-- **PyMuPDF** - High-performance PDF text extraction library
-- **Python 3.9+** - Required for PyMuPDF compatibility
-
-## Installation
-
-Using the UV package manager (recommended):
+## Setup
 
 ```bash
-# Install UV if you haven't already
-pip install uv
-
-# Install project dependencies
 uv sync
 ```
 
-## Usage
-
-Run the extraction script on a single PDF file:
+## Run Extraction
 
 ```bash
-uv run extract_pdf_text.py <path_to_pdf>
+uv run python extract_pdf_text.py --pdf-path examples/pdf --txt-path /tmp/pdf_txt_output
 ```
+
+## Run Tests
+
+```bash
+uv sync --group test
+uv run pytest
+```
+
+The test suite runs the extractor against `examples/pdf` and compares generated files to `examples/txt`.

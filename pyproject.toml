@@ -20,4 +20,9 @@ build-backend = "hatchling.build"
 packages = ["."]
 
 [dependency-groups]
-dev = []
+dev = [
+    "black>=25.11.0",
+]
+test = [
+    "pytest>=8.4.2",
+]

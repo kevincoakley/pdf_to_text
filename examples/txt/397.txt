@@ -1,0 +1,274 @@
+# 397.pdf
+
+DJAO: A Communication-Constrained DCOP Algorithm that Combines Features of ADOPT and Action-GDL
+
+Yoonheui Kim and Victor Lesser University of Massachusetts at Amherst MA 01003, USA {ykim,lesser}@cs.umass.edu
+
+In this paper we propose a novel DCOP algorithm, called DJAO, that is able to efﬁciently ﬁnd a solution with low communication overhead; this algorithm can be used for optimal and bounded approximate solutions by appropriately setting the error bounds. Our approach builds on distributed junction trees used in Action-GDL to represent independence relations among variables. We construct an AND/OR search space based on these junction trees. This new type of search space results in higher degrees for each OR node, consequently yielding a more efﬁcient search graph in the distributed settings. DJAO uses a branch-and-bound search algorithm to distributedly ﬁnd solutions within this search graph. We introduce heuristics to compute the upper and lower bound estimates that the search starts with, which is integral to our approach for reducing communication overhead. We empirically evaluate our approach in various settings.
+
+Introduction In this paper, we formulate a new algorithm for distributed constraint optimization problems (DCOPs), called DJAO, which works on a distributed junction tree (Paskin, Guestrin, and Mc Fadden 2005). DJAO operates in two phases. In the ﬁrst phase, heuristic upper and lower bounds for variable value conﬁgurations are created using a bottom-up propagation scheme similar in character to Action-GDL (Vinyals, Rodriguez-Aguilar, and Cerquides 2011). Except that instead of transmitting values for all conﬁgurations, we transmit only the ﬁltered upper and lower bounds of conﬁguration values. The next phase using these heuristics conducts an ADOPT-like (Modi et al. 2005; Yeoh, Felner, and Koenig 2008) search on AND/OR search graph based on the junction tree, which we call AND/OR search junction graph, to ﬁnd a solution with desired precision. This two-phase strategy reduces overall communication signiﬁcantly.
+
+AND/OR search tree and context-minimal AND/OR search graph An AND/OR search space (Marinescu and Dechter 2005) is introduced to exploit independencies encoded by the graph-
+
+Copyright c 2014, Association for the Advancement of Artiﬁcial Intelligence (www.aaai.org). All rights reserved.
+
+ical model upon which DCOP algorithms such as Action GDL and Max-Sum (Farinelli et al. 2008) are constructed. An AND/OR search tree is a search space with additive AND nodes whose subtrees denote disjoint search spaces under different variables in addition to OR nodes in traditional search trees whose subtrees denote disjoint search spaces under values of variables. AND nodes decompose the search space in their subtrees under Generalized Distributive Law framework (Aji and Mc Eliece 2000). It reduces the size of DCOP search space from O(exp(n)) to O(n exp(m)), where m is the depth of the pseudo-tree (Koller and Friedman 2009) and n is the number of variables. DCOP algorithms such as ADOPT (Modi et al. 2005) and Bn BADOPT (Yeoh, Felner, and Koenig 2008) can be viewed as distributed search algorithms on this AND/OR search space. Deﬁnition 1 (AND/OR search tree) Given a COP instance P, its primal graph G and a pseudotree T of G, the associated AND/OR search tree ST (P) has alternating levels of OR nodes and AND nodes. The OR nodes are labeled Xi and correspond to variables. The AND nodes are labeled Xi, a and correspond to value assignments in the domains of variables. The root of the AND/OR search tree is an OR node, labeled with the root of T. The children of an OR node Xi are AND nodes labeled with assignments Xi, a , consistent along the path from the root. The children of an AND node Xi, a are OR nodes labeled with the children of variable Xi in T. The path of a node n ST , denoted Path ST (n), is the path from the root of ST to n, and corresponds to a partial value assignment to all variables along the path. An example of AND/OR search tree is given in Fig. 1a. Because AND nodes decompose the problem into separate subproblems, variables in different subtrees of an AND node n are considered independently given the value assignment along the path to n. The arcs in ST are annotated by appropriate labels of the cost functions. Deﬁnition 2 (label) The label l(Xi, Xi, a ) is deﬁned as the sum of all the cost function values for which variable Xi is contained in their scope and whose scope is fully assigned along the path from root to n. Deﬁnition 3 (value) The value v(n) of a node n ST , is deﬁned recursively as follows: (i) if n = Xi, a is a terminal AND node then v(n) = l(Xi, Xi, a ); (ii) if n =
+
+Proceedings of the Twenty-Eighth AAAI Conference on Artificial Intelligence
+
+Xi, a is an internal AND node then v(n)=(Xi, Xi, a )+ P n succ(n) v(n ); (iii) if n = Xi is an internal OR node then v(n) = maxn succ(n) v(n ), where succ(n) are the children of n in ST .
+
+In (Dechter and Mateescu 2007), the AND/OR search graph shown in Fig. 1c was introduced to reduce the size of the search tree in Fig 1a by merging two nodes that root identical subtrees. A Context-based merge operation is deﬁned as either i) merging two OR nodes that share the same variable assignments on the ancestors of these nodes, which have connections in G to these nodes or their descendants, or ii) merging two AND nodes that share assignments on these nodes and ancestors of nodes, which have connections in G to these nodes descendants. Example For the primal graph G in Fig. 1b and a search tree in Fig. 1a for G, OR nodes for D that shares assignments for B can be merged as B is connected to D in G. In contrast, OR nodes for C cannot be merged as the assignments for A and B should match. AND nodes at the lowest level can be merged if these nodes share the assignments as these nodes do not have any descendant.
+
+Figure 1: an AND/OR search graph
+
+Deﬁnition 4 (context minimal AND/OR graph) The AND/OR search graph of G that is closed under contextbased merge operator is called a context minimal AND/OR search graph.
+
+Distributed Constraint Optimization and Junction-Tree A distributed constraint optimization problem (DCOP) instance P = A, X, D, F is formally deﬁned by the following parameters: A set of variables X = {X1, . . . , Xr}, where each variable has a ﬁnite domain D (maximum size N) of possible values that it can be assigned.
+
+A set of constraint functions F = (F1, . . . , Fk), where each constraint function, Fj : Xj ℜ, takes as input any setting of the variables Xj X and provides a real valued utility. In DCOP, we assume that each variable xi is owned by an agent ai A and that an agent only knows about the constraint functions in which it is involved. The DCOP can be represented using a constraint network, where there is a node corresponding to each variable xi and where there is an edge (hyper-edge) for each constraint Fj that connects all variables that are involved in the function Fj. The objective in the DCOP is to ﬁnd the complete variable conﬁguration x that maximizes P Fj F Fj(xj). The dual constraint graph (Koller and Friedman 2009) is a transformation of a non-binary network into a special type of binary network. It contains cliques (or c-variables) domains of which ranges over all possible value combinations permitted by the corresponding constraint functions, and shared variables in any two adjacent cliques have same values. A junction tree (or join tree) (Cowell et al. 2007) T is a subgraph of the dual graph which is a tree and satisﬁes the condition that cliques associated with a variable x form a connected subset of T. A Junction tree is represented as a tuple X, C, S, F . where X is a set of variables, C is a set of cliques, where each clique Ci is a subset of variables Ci X; S is a set of separators, where each separator is an arc between two adjacent cliques containing their intersection; and F is a set of potentials, where each potential in F is assigned to each clique in C. A distributed junction tree (Paskin, Guestrin, and Mc Fadden 2005) decomposes a DCOP into a series of subproblems, some of which can be solved in parallel. A subproblem represented as a clique ci C can be solved independently given the local constraint functions fi F and the values from neighbors on separator si S. Separators S specify which values will be used in the neighboring cliques in order to compute the solution for its local subproblem.
+
+DJAO(k) First Phase: Heuristics Generation Preprocessing techniques to supply the search with heuristic values has successfully been used to enhance both centralized and decentralized search methods. (Ali, Koenig, and Tambe 2005; Wallace 1996). In this section we describe a scheme for generating initial heuristic estimates h UB and h LB used in DJAO(k), based on a new function ﬁltering technique, which we call Soft Filtering, described here. (Pujol-Gonzalez et al. 2011; Brito and Meseguer 2010) used the Function Filtering technique (Brito and Meseguer 2010) on DCOPs to prune variable conﬁgurations of local nodes, that do not yield the optimal solution. We use the soft function ﬁltering technique to generate heuristics that maintains the tuples that potentially yield the optimal solution while summarizing the rest with upper and lower bounds. Unlike the heuristics in (Ali, Koenig, and Tambe 2005; Wallace 1996) which are generated by solving lower complexity problems than the original, DJAO solves the original
+
+problem and focuses on reducing communication by ﬁltering tuples that are unlikely to be part of the optimal solution. The Soft Filtering technique used in DJAO summarizes constraint functions to reduce communication required for transmitting such function. A simple difference from Function Filtering is that the Soft Filtering technique provides summarized lower and upper bounds on ﬁltered conﬁgurations. Let the variable conﬁguration S in message m be divided into two sets ﬁltered conﬁgurations SF , and nonﬁltered conﬁgurations SNF . Let UB be the upper bounds of values on variable conﬁgurations and LB the lower bounds. The values UBm and LBm in the messages are ﬁltered as follows.
+
+UBm(v) = UB(v) if v SNF max SF UB(v) if v SF LBm is similarly deﬁned with max replaced with min. Filtered conﬁgurations are summarized as a ﬁltered tuple with a single upper and lower bounds, therefore reducing the number of items in each message from 2S to 2 SNF +2. The optimal strategy is guaranteed to remain in the search space as no solution is completely dropped. This summarization builds a basis for the next phase where an ADOPT-like search ﬁnds a solution within a desired accuracy. Among many ways to select which items to ﬁlter, we select items in the bottom (100 d)% of the function range.
+
+Second Phase: Search on AND/OR junction graph On the pseudo-tree based search graph, functions are evaluated only when their scope is fully assigned along the path. The search backtracks to evaluate different variable assignment which occurs among the domain of a single variable at each level. This complete decentralization in value selection in the distributed setting results in the exponential number of messages in ADOPT. Instead, we introduce AND/OR search graph on a junction tree where each level is associated with each clique in the junction tree in a DCOP (See Fig. 2), consequently yielding a more compact search graph with a lower number of nodes. This search graph is a contextminimal AND/OR search graph upon construction.
+
+00C 10C 11C 1D
+
+Figure 2: an AND/OR search graph based on a junction tree
+
+Deﬁnition 5 (AND/OR search junction graph) Given a DCOP instance P and its junction tree T, the associated AND/OR search junction graph ST (P) has alternating levels of OR nodes and AND nodes. The OR nodes are labeled Ci : Si, a, Ni where a are variables assignments in the domains of variables in separators Si whose value are propagated from ancestors and newly appeared variables Ni in clique Ci. These OR nodes correspond to
+
+the cliques with partial assignment. The AND nodes are labeled Sij, b and correspond to value assignments in the domains of the separator between clique Ci and its child Cj. The root of the AND/OR search graph is an OR node, labeled with the root of T. The children of an AND node Sij, b are OR nodes who are labeled with Cj: Sj, b, Nj with the same assignment on variables in separators Sij and Sj.
+
+Example Consider the graphical model in Fig. 1b describing a graph coloring problem over domains {0,1}. An AND/OR search graph based on a possible pseudo-tree is given in Fig 1c and an AND/OR search junction graph in Fig 1d is given in Fig. 2. Observe that the function evaluation on l({A, B}, a) occurs at the expansion of nodes at level 3 in Fig. 1c instead of at level 1 in Fig. 2. On Fig. ??ﬁg:aograph], the search is unguided until the third expansion and it also elongates the backtrack path leading to an increase in the number of visited nodes to evaluate a single function. Theorem 1 Given a DCOP instance P and a junction tree T, its AND/OR search junction graph is sound and complete. It contains all and only solutions. The solution space in AND/OR search junction graph is identical to the junction tree, thus it contains all and only solutions. Consequently, any search algorithm that traverses the AND/OR search junction graph in a depth-ﬁrst manner is guaranteed to have a time complexity equal to the time complexity of Action-GDL (Vinyals, Rodriguez-Aguilar, and Cerquides 2011) on the same junction tree which is exponential in the tree width.
+
+Theorem 2 The size of search junction graph has exactly same size as the total complexity of junction tree as no subtree is redundant. The depth of the graph does not exceed the number of agents.
+
+The search result for its subtree is stored at each node, therefore no identical subtree is explored twice and a value assignment on a cost function is never repeated. The arcs in ST are annotated by appropriate labels of the cost functions. The nodes in ST are associated with a value, accumulating the result of the computation resulted from the subtree below. labels on the arcs are determined by values from neighboring nodes unlike the one deﬁned in Def. ??def:value].
+
+Deﬁnition 6 label: The label l(Ci: Si, a, Ni , Sij, b ) of the arc from the OR node to the AND node Sij, b is deﬁned as the cost function values contained in the clique Ci whose scope is fully assigned with values from the parent OR node and and child AND node.
+
+The value of v(n) of a node n ST (P) is computed in the same way as in Def. 3. Likewise, the value of each node can be recursively computed from leaves to root. We can show that:
+
+Proposition 1 Given an AND/OR search graph ST (P) of a DCOP instance, the value function v(n) is the maximum cost solution to the subproblem rooted at n, subject to the current variable instantiation along the path from root to n. If n is the root of ST , then v(n) is the maximum cost solution to P.
+
+We prove optimality by verifying the value of nodes are identical to the values produced during the execution of Action-GDL. The value of an AND node is identical to the value of corresponding assignments in the messages from the corresponding clique of Action-GDL given the context along the search path to these nodes. Valuation of OR nodes is the combination of local utility functions and values of its child nodes and corresponds to the maximum achievable value of variable assignments given the variable assignments along the search path.
+
+Proposition 2 AND/OR search junction graph ST (P) is context-minimal upon construction
+
+The separators Si and Sij contain all and only variables that build a context for each node and a single node is created for each value assignment in the separator, thus it is contextminimal.
+
+Search in distributed settings Each agent in the system distributedly conducts its share of search for the nodes on ST (P) it owns. Agents are responsible for valuation of owned nodes and path determination.
+
+Deﬁnition 7 Agent ownership: Each node in ST (P) is owned by an agent. Agent Ai owns all nodes associated with its own clique Ci: OR nodes Ci : Si, a, Ni and child AND nodes of these are assigned to Ai.
+
+For example, suppose clique AB, ABC and BD in Fig 1d are owned by agent A1, A2, and A3 respectively. OR nodes of clique BD are C3 : B, 0, D , C3 : B, 1, D . These OR nodes and child AND nodes of these are assigned to A3. Search procedure between nodes belonging to different agents incurs communication. When an agent Aj chooses to expand a child OR node Ci : Si, a, Ni , Aj transmits partial assignments a to an agent Ai who owns the child nodes. Updated function values are sent back to Aj when the search backs up. Search paths that incur communication are displayed as dotted lines in Fig. 2.
+
+DJAO on AND/OR search junction graph If each node n ST (P) is assigned a heuristic lower-bound estimate LB(n) and heuristic upper-bound estimate UP(n), then we can calculate the lower and upper bound estimates of assignments and dominated search space can be pruned.
+
+Bounds on Partial Solution Similarly to (Marinescu and Dechter 2005), a partially expanded search graph, denoted as PSG, contains the root node, will have a frontier containing all the nodes that were generated but not expanded. Each expansion of a leaf node on the search tree updates the lower and upper bound estimates on AND/OR search graph. An active partial subtree APT(n) rooted at a node n ending at a tip node t contains the path between n and t, and all OR children of AND nodes on the path. A dynamic heuristic function of a node n relative to the current PSG given the initial heuristic functions h UB and h LB can be computed. Deﬁnition 8 (Dynamic Lower and Upper Bound) Given an active partial tree APT(n), the dynamic heuristic estimate of upper and lower bound function, UB(n) and LB(n), is deﬁned recursively as follows: (i) if there
+
+is a single node n in APT(n) and is evaluated, then UB(n) = v(n) = LB(n) else if n is a single node in APT UB(n) = h UB(n) and LB(n) = h LB(n); (ii) n = Sij, b is an AND node, having OR children m1, . . . , mk, and label = l(Ci : Si, a, Ni , Sij, b ), then
+
+UB(n) = min(h UB(n), label + Pk i=1 UB(mi)) LB(n) = max(h LB(n), label + Pk i=1 LB(m)) ;
+
+(iii) if n = Ci : Pi, a, Ni where n is an OR node, having an AND child m, then UB(n) = min(h(n), UB(m)) and LB(n) = max(h(n), LB(mi)).
+
+Theorem 3 LB(n) is a lower bound on the optimal solution to the subproblem rooted at n, namely LB(n) v(n), and also by deﬁnition LB(n) h LB(n). Also, UB(n) v(n) and UB(n) h LB(n).
+
+Proof: We will prove by induction assuming the correctness of heuristics that v(n) h UB(n), v(n) h LB(n). Basis: At leaf nodes of AND/OR junction search graph, it is trivial that v(n) = UB(n) = LB(n) as v(n) is computed using local constraints and does not involve any heuristics. Induction step: At any AND node having OR children m1, . . . , mk,
+
+v(n) = label + P
+
+i v(mi) label + P
+
+where v(mi) UB(mi).
+
+v(n) min(h UB(n), label + P
+
+i UB(mi)) = UB(n),
+
+where v(n) h UB(n). At any OR node having AND child m = argmaxi v(mi),
+
+v(n) = v(m) UB(m)
+
+v(n) min(h UB(n), UB(m)) = UB(n).
+
+LB(n) v(n) can be proved similarly. Therefore,
+
+LB(n) v(n) UB(n).
+
+Also, UB(n) and LB(n) provides tighter bounds than the initial heuristic functions.
+
+Proposition 3 (Pruning rule) For any AND node n and its sibling m, if UB(n) < LB(m) or UB(n) = LB(n) then subtree below n can be pruned.
+
+DJAO(k) We now set up a DJAO search on ST (P) whose nodes are assigned to agents. Starting from the root agent given the initial heuristic upper and lower bound functions h UB and h LB, the objective is to search one of the solution that satisﬁes the termination condition while pruning dominated candidate solutions. DJAO agents use three types of messages: VALUE, COST, and TERMINATE. At the start, the root agent expands the OR nodes from its AND node and selects the best branch in the subtree and sends VALUE messages containing variable values on the chosen branch to its child nodes. Upon receipt of a VALUE message, an agent evaluates whether the back-up condition is satisﬁed for the given value assignments b in the message. If the back-up condition is satisﬁed, the agent backs up with updated values by sending a COST message to its parent. Otherwise, it expands the OR nodes compatible with b and selects the best branch and sends VALUE message to its children.
+
+Algorithm 1: DJAO(k)(1)
+
+procedure Init() wait 0 ; // number of waited messages ki 0, kc 0 ; // own and child s k value mb nil ; // OR node in par(ai) to backtrack to m , m ; // OR node with max, second max UB nc; // AND node context-compatible with mb procedure Root Run() Init(); Update M(); if (Check Termination()) then
+
+Send(TERMINATE) to c succ(ai); terminate; end ki UB(m ) max(UB(m ) k, LB(m )); wait succ(ai) ; Send(VALUE, m , ki); loop forever while (message queue is not empty) do
+
+pop msg off message queue; When Received(msg); if (Check Termination()) then
+
+Send(TERMINATE) to c succ(ai); terminate; else if ( wait==0) then
+
+Update M(); ki = UB(m ) max(UB(m ) k, LB(m )); Send(VALUE, m , ki) to c succ(ai); end procedure Run() Init(); loop forever while (message queue is not empty) do
+
+pop msg off message queue; When Received(msg); if (Decide Back Up() && wait==0) then
+
+Send(COST, mb, UB(mb), LB(mb)) to par(ai) else if (wait==0) then
+
+Update M(); Send(VALUE, m , kc), to c succ(ai) end
+
+Upon receipt of COST message containing the updated lower and upper bounds on the chosen expanded OR nodes from all child nodes, it recalculates the lower and upper bounds of its AND node. It then re-evaluates the back-up condition for the received VALUE message. Unless it satisﬁes the back-up condition, then the question of which branch to select is re-examined and the agents sends another VALUE message to its children. These steps are repeated until a termination condition in Prop 4 holds for the root agent. It then sends a TERMINATE message to each of its children and terminate. Upon receipt of a TERMINATE message, each agent does the same.
+
+Proposition 4 Given an OR node n and AND nodes
+
+Algorithm 2: DJAO(k)(2)
+
+procedure Update M() m = argmax UB(m), for m succ(nr); m = argmax UB(m), for m succ(nr) \ m ; procedure When Received(COST, m, v UB, v LB) wait wait 1, UB(m) v UB, LB(m) v LB; UB (n) UB(n), where n = par(m) ; UB(n) max(UB(n), UB(m)) ; LB(n) max(LB(n), LB(m)); procedure When Received(VALUE, m, k) ki k, mb m, wait succ(ai) ; nc context compatible(m),; procedure Decide Back Up() if (UB(nc) UB (nc) ki) then
+
+return true; else
+
+kc (ki (UB(n) UB (n)))/ succ(ai) ; return false; end procedure When Received(TERMINATE) Send(TERMINATE) to c succ(ai); terminate; procedure Check Termination() if ( UB(nr) == LB(nr)) then
+
+return true; else if for m succ(nr)\m , UB(m) LB(m ) then
+
+return true; return false;
+
+m1, . . . , mk at the root agent, DJAO(k) is terminated if UB and LB satisﬁes the condition UB(n) = LB(n) or i, UB(mj) LB(mi) for j, i = j.
+
+Each agent stores the lower and upper bounds of expanded nodes and updates these values upon each COST message arrival. The memory requirement for each agent does not exceed O(nd) where n is the size of variable domain and d is the induced width of the junction tree. Among many different search strategies which determines the back-up condition for solving COP and DCOP, bestﬁrst search and depth-ﬁrst branch-and-bound search have been primarily studied (Marinescu and Dechter 2005; 2007; Modi et al. 2005; Yeoh, Felner, and Koenig 2008). Best-ﬁrst search always follows the best item found and in the distributed setting whenever there is an update, agents propagate it to all ancestors whose best items may change. On the other hand, depth-ﬁrst search retains the current path until it is certainly dominated or the true value of node v(n) is found. In (Gutierrez, Meseguer, and Yeoh 2011), ADOPT(k) provides a trade-off between these two extremes, where the search keeps the current path until the distance between the best solution on the current path and the best solution found so far becomes greater than a given constant k. Similarly, we developed DJAO(k), which subsumes both depth-ﬁrst and best-ﬁrst search strategy on AND/OR search junction graph. It performs depth-ﬁrst when k = , bestﬁrst when k = ϵ, and a hybrid when ϵ < k < , where
+
+k is the distance between the best found solution UB(m ) and the next best solution UB(m ) found so far. Unlike ADOPT(k) in which each agent determines k using the best solutions based on its subproblems provided by the node s subtree, each agent in DJAO instead uses a measurement that considers a global perspective of the entire problem on the current best solution. The search backtracks when UB(m ) max(UB(m ) k, LB(m )), which occurs as soon as the best solution is dominated by the second best with the best-ﬁrst strategy with k = ϵ, and when the true value for m is found (Thus, UB(m ) = LB(m )) with the depth-ﬁrst strategy with k = . Algorithm 1 and 2 shows the pseudocode of DJAO(k), where ai is a generic agent, par(ai) its parent agent, succ(ai) its set of child agents, par(n) the parent node of the node n in the search graph, succ(n) the set of node n s child nodes, and nr the AND node of the root agent. The root agent runs Root Run() which contains search initiation whereas all other agents runs Run(). The pseudocode uses a predicate context compatible(m) to select a node whose variable value assignment matches that of the node m. Example of DJAO On the junction tree in Fig. 1d, let there be three agents, A1, A2 and A3 for the cliques AB, ABC and BD respectively. The constraint function f(A, B) are assigned to clique AB, f(A, C) and f(B, C) to clique ABC, f(B, D) to BD.
+
+A B 0 0 0 0 1 4 1 0 5 1 1 1
+
+B D 0 0 0 0 1 1 1 0 4 1 1 2
+
+A C 0 0 0 0 1 2 1 0 3 1 1 0
+
+B C 0 0 1 0 1 4 1 0 5 1 1 2
+
+Phase 1: The ﬁrst phase starts by the agent A2 computing the local potential b by merging f(A, C) and f(B, C) in the clique ABC as well as A3.
+
+b(A, B, C) :
+
+A B C 0 0 0 1 0 0 1 6 0 1 0 5 0 1 1 4 1 0 0 4 1 0 1 4 1 1 0 8 1 1 1 2 Each agent who does not own the root node generates a ﬁltered message once they have received from all the child agents (agents who own the child OR nodes). The message from A2 and A3 to A1 in Action-GDL would be as follows.
+
+0 1 1 4 MA2 A1 :
+
+A B 0 0 6 0 1 5 1 0 4 1 1 8 Filtered messages are created and sent with the ﬁltering rate l = 80. FS denotes the ﬁltered set of variable conﬁgurations. For the message MA2 A1, the function range is (8 4), thus items with upper bound equal or less than (4+
+
+4*0.8) are ﬁltered except (A=1, B=1). Messages in DJAO are:
+
+MA3 A1 : B h LB h UB 1 4 4 FS 1 1 MA2 A1 : A B h LB h UB 1 1 8 8 FS 4 6
+
+Once messages received, A1 calculates potential b as the total sum of received messages and local functions.
+
+A B LB UB 0 0 5 7 0 1 12 14 1 0 10 12 1 1 13 13
+
+Phase 2: A1 checks the termination condition on the possible solution with the highest upper bound (A=0, B=1). Since LB(A=0, B=1) does not dominate UB(A=1, B=1), the search starts. A1 computes the distance k1 between maximum and the second maximum upper bounds. The distance k1 = 14 13 = 1. The search backtracks when the upper bound decreases by equal or more than min(k, k1). The upper and lower bound gap originates only from MA2 A1. Therefore, A1 sends a VALUE message with a variables conﬁguration (A=0, B =1) and min(k, k1) to A2. A2 receives this VALUE message. It then sends a COST message LB(0, 1)=5, UB(0, 1)=5 as it is a leaf node. Upon receipt of the COST message, the root node updates its potential.
+
+A B LB UB 0 0 6 7 0 1 12 12 1 0 11 12 1 1 13 13
+
+Since the lower bound of (A=1, B=1) dominates upper bounds of all other conﬁgurations, the termination condition is satisﬁed and the search terminates.
+
+Approximate DJAO(k) An approximate version of the algorithm can be obtained by relaxing the constraint on upper and lower bound gap similar to search-based DCOP algorithms (Modi et al. 2005; Yeoh, Sun, and Koenig 2009). Approximate DJAO with an error bound e terminates when the solution contains no more than error e such that that value of the found solution n is no worse than v(n ) e, where n is the optimal solution. The corresponding termination condition is LB(n) UB(n) e or i, UB(mj) LB(mi)+e for j, i = j. Also, the search backtracks when UB(m ) max(UB(m ) k, LB(m ) + e).
+
+Empirical Evaluation In this section we evaluate the performance of DJAO search. For each experiment, we report the communication costs, NCCCs(non-concurrent constraint check), and solution quality for approximate solutions with respect to optimal solutions. We used a DJAO that sends VALUE messages to at most 25 nodes when there are ties. We evaluate and compare our approach with Action-GDL and ADOPT(k) with k which was reasonable among 400, 4000 and 40000. Communication costs are measured as the number of bytes sent during execution1 and the message count of both UTIL
+
+1A single variable value is 4byte, and cost 8byte.
+
+c Algorithm Total Bytes NCCCs Msgs
+
+DJAO(k = ϵ) 227744 25627367 667 DJAO(k = 10) 260708 25991283 615 DJAO(k = 100) 229503 20898049 664 DJAO(k = 500) 271962 34144648 1485 Action-GDL 394690 2741859 18 ADOPT(K=4000) 1217757 4341532 206082
+
+DJAO(k = ϵ) 1540523 794393531 2888 DJAO(k = 10) 1509601 835729595 2804 DJAO(k = 100) 1508705 570976502 2478 DJAO(k = 500) 2516606 1792901180 9263 Action-GDL 3679104 25942425 18 ADOPT(K=4000) 54556373 417172726 8992463
+
+DJAO(k = ϵ) 1513317 734471121 3203 DJAO(k = 10) 2204580 1117448830 3505 DJAO(k = 100) 1513698 553233251 2910 DJAO(k = 500) 4084228 2759254975 17741 Action-GDL 4568592 33038068 18 ADOPT(K=4000) 37285466 219714985 6334245
+
+Table 1: Performance of Optimal DJAO(k) on Random Binary DCOP Instances
+
+0 1 2 4 8 0
+
+Accuracy Loss(%)
+
+Savings WRT GDL
+
+Overall Communication Cost
+
+l=0.8 l=0.7 l=0.6
+
+(a) Communication Savings
+
+0 1 2 4 8 0 5 10 15 20 25 30 35 40
+
+Accuracy Loss
+
+Constraint Checks WRT GDL
+
+Overall Computation Cost
+
+l=0.8 l=0.7 l=0.6
+
+(b) Computation time
+
+0 1 2 4 0.85
+
+Accuracy Loss(%)
+
+Solution Quality
+
+Solution Quality
+
+l=0.8 l=0.7 l=0.6 Solution Bound
+
+(c) Solution Quality
+
+0 1 2 4 8 1 21 41 61 81 101 121 141 161 181
+
+Accuracy Loss
+
+Message Count WRT GDL
+
+Message Count
+
+l=0.8 l=0.7 l=0.6
+
+(d) Message Count
+
+Figure 3: Performance of Approximate DJAO(k=10)
+
+Algorithm Total Bytes NCCCs Msgs
+
+A DJAO(k = ϵ) 163,360 22,217,301 315 DJAO(k = 100, 000, 000) 155,021 25,413,935 326 Action-GDL 3,624,186 19,905,921 126 ADOPT(K=30,000,000) 11,121,364 24,068,428 2,005,732
+
+B DJAO(DJAOk = ϵ) 278,168 30,441,957 325 DJAO(k = 100, 000, 000) 238,696 21,998,565 342 Action-GDL 4,274,606 24553995 126 ADOPT(K=30,000,000) 54,735,040 166,542,715 9,869,280
+
+C DJAO(k = ϵ) 207,801 9,379,233 194 DJAO(k = 100, 000, 000) 120,516 7,509,783 191 Action-GDL 1,294,382 6,419,231 78 ADOPT(K=30,000,000) 1,009,124 2,625,136 178,301
+
+D DJAO(k = ϵ) 718,528 31,980,359 405 DJAO(k = 100, 000, 000) 482,654 43,316,277 474 Action-GDL 10,321,229 58,754,948 126 ADOPT(K=30,000,000) 21,573,856 66,347,439 3,812,541
+
+Table 2: Sensor Network Instances
+
+and VALUE messages. For approximate results, we show the true utility of found solution which is often much higher than the estimated lower bound. We experimented on random binary DCOP instances with 10 variables of domain size 10. The function cost are randomly generated over the range 0, . . . , 200 . We varied the number of constraint functions c over 20, 25 and 30 and averaged our results over 20 instances for each value of c. The total communication amount is largely determined by the structure of junction tree. Thus, ﬁve junction trees were constructed for each problem instance. Initial heuristics were generated using soft ﬁltering where the bottom 70% is ﬁltered. The DJAO with k = ϵ(i.e., conducts best-ﬁrst search) consistently performed well in these experiments. Tab. 2 shows the results on sensor network instances from a public repository (Yin 2008) with a heuristic which ﬁl-
+
+ters 90% (l = 0.9). Tab. 1 and 2 show DJAO requires less communication than both ADOPT2 and Action-GDL. Compared to the random DCOP instances, function ranges are wider and many clearly dominated variable conﬁgurations results in signiﬁcant communication savings with DJAO. DJAO with high k values performed better in terms of communication on these lower connectivity graphs compared to the random DCOP instances. Lastly, in an experiment on the random binary DCOP instances, we measured the methods trend as the solution quality guarantee changes. We evaluated 20 instances for each quality loss ranging from loss = 0% to loss = 8% using a heuristic which ﬁlters 80%(l=0.8) and 70%(l=0.7). Results in Fig. 3 show that DJAO gains signiﬁcant savings in communication as the error bound increases. With 80% heuristics, it transmits about 18 times less information than that of Action-GDL when loss = 8% while it uses 13 times more computation (NCCCs) and about 130 messages per agent.
+
+Conclusions
+
+We addressed the problem of solving DCOP exactly and with precise approximation bounds by developing a new distributed algorithm called DJAO. There are three novel ideas in DJAO. Firstly, it uses an AND/OR junction graph representation, which builds a basis for efﬁcient search in the distributed settings. The second is a two phase search strategy that combines characteristics of ADOPT and Action-GDL. The third is a soft ﬁltering technique to signiﬁcantly reduce communication without losing any accuracy.
+
+2Results from (Gutierrez, Meseguer, and Yeoh 2011)
+
+Aji, S., and Mc Eliece, R. 2000. The generalized distributive law. Information Theory, IEEE Transactions on 46(2):325 343. Ali, S.; Koenig, S.; and Tambe, M. 2005. Preprocessing techniques for accelerating the DCOP algorithm ADOPT. In Proceedings of the Fourth International Joint Conference on Autonomous Agents and Multiagent Systems, AAMAS 05, 1041 1048. New York, NY, USA: ACM. Brito, I., and Meseguer, P. 2010. Improving DPOP with function ﬁltering. In Proceedings of the 9th International Conference on Autonomous Agents and Multiagent Systems: volume 1 - Volume 1, AAMAS 10, 141 148. Richland, SC: International Foundation for Autonomous Agents and Multiagent Systems. Cowell, R. G.; Dawid, A. P.; Lauritzen, S. L.; and Spiegelhalter, D. J. 2007. Probabilistic Networks and Expert Systems: Exact Computational Methods for Bayesian Networks. Springer Publishing Company, Incorporated, 1st edition. Dechter, R., and Mateescu, R. 2007. AND/OR search spaces for graphical models. Artif. Intell. 171(2-3):73 106. Farinelli, A.; Rogers, A.; Petcu, A.; and Jennings, N. R. 2008. Decentralised coordination of low-power embedded devices using the max-sum algorithm. In AAMAS 08: Proceedings of the 7th international joint conference on Autonomous agents and multiagent systems, 639 646. Richland, SC: International Foundation for Autonomous Agents and Multiagent Systems. Gutierrez, P.; Meseguer, P.; and Yeoh, W. 2011. Generalizing ADOPT and Bn B-ADOPT. In Proceedings of the Twenty-Second International Joint Conference on Artiﬁcial Intelligence - Volume Volume One, IJCAI 11, 554 559. AAAI Press. Koller, D., and Friedman, N. 2009. Probabilistic Graphical Models: Principles and Techniques - Adaptive Computation and Machine Learning. The MIT Press. Marinescu, R., and Dechter, R. 2005. AND/OR branchand-bound for graphical models. In Proceedings of the 19th international joint conference on Artiﬁcial intelligence, IJCAI 05, 224 229. San Francisco, CA, USA: Morgan Kaufmann Publishers Inc. Marinescu, R., and Dechter, R. 2007. Best-ﬁrst AND/OR search for graphical models. In Proceedings of the 22Nd National Conference on Artiﬁcial Intelligence - Volume 2, AAAI 07, 1171 1176. AAAI Press. Modi, P. J.; Shen, W.-M.; Tambe, M.; and Yokoo, M. 2005. ADOPT: asynchronous distributed constraint optimization with quality guarantees. Artif. Intell. 161(1-2):149 180. Paskin, M.; Guestrin, C.; and Mc Fadden, J. 2005. A robust architecture for distributed inference in sensor networks. In Proceedings of the 4th International Symposium on Information Processing in Sensor Networks, IPSN 05. Piscataway, NJ, USA: IEEE Press. Pujol-Gonzalez, M.; Cerquides, J.; Meseguer, P.; and Rodriguez-Aguilar, J. A. 2011. Communication-constrained
+
+DCOPs: message approximation in GDL with function ﬁltering. In The 10th International Conference on Autonomous Agents and Multiagent Systems - Volume 1, AAMAS 11, 379 386. Richland, SC: International Foundation for Autonomous Agents and Multiagent Systems. Vinyals, M.; Rodriguez-Aguilar, J. A.; and Cerquides, J. 2011. Constructing a unifying theory of dynamic programming DCOP algorithms via the generalized distributive law. Autonomous Agents and Multi-Agent Systems 22(3):439 464. Wallace, R. J. 1996. Enhancements of branch and bound methods for the maximal constraint satisfaction problem. In Proceedings of the Thirteenth National Conference on Artiﬁcial Intelligence - Volume 1, AAAI 96, 188 195. AAAI Press. Yeoh, W.; Felner, A.; and Koenig, S. 2008. Bn B-ADOPT: an asynchronous branch-and-bound DCOP algorithm. In Proceedings of the 7th international joint conference on Autonomous agents and multiagent systems - Volume 2, AAMAS 08, 591 598. Richland, SC: International Foundation for Autonomous Agents and Multiagent Systems. Yeoh, W.; Sun, X.; and Koenig, S. 2009. Trading off solution quality for faster computation in dcop search algorithms. In Proceedings of the 21st International Jont Conference on Artiﬁcal Intelligence, IJCAI 09, 354 360. San Francisco, CA, USA: Morgan Kaufmann Publishers Inc. Yin, Z. 2008. USC DCOP repository.
+

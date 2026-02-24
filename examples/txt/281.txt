@@ -1,0 +1,220 @@
+# 281.pdf
+
+Optimizing Resilience in Large Scale Networks
+
+Xiaojian Wu,1 Daniel Sheldon,1,2 Shlomo Zilberstein,1
+
+1 College of Information and Computer Sciences, University of Massachusetts, Amherst, MA 01003, USA 2 Department of Computer Science, Mount Holyoke College, South Hadley, MA 01075, USA {xiaojian,sheldon,shlomo}@cs.umass.edu
+
+We propose a decision making framework to optimize the resilience of road networks to natural disasters such as ﬂoods. Our model generalizes an existing one for this problem by allowing roads with a broad class of stochastic delay models. We then present a fast algorithm based on the sample average approximation (SAA) method and network design techniques to solve this problem approximately. On a small existing benchmark, our algorithm produces near-optimal solutions and the SAA method converges quickly with a small number of samples. We then apply our algorithm to a large real-world problem to optimize the resilience of a road network to failures of stream crossing structures to minimize travel times of emergency medical service vehicles. On medium-sized networks, our algorithm obtains solutions of comparable quality to a greedy baseline method but is 30 60 times faster. Our algorithm is the only existing algorithm that can scale to the full network, which has many thousands of edges.
+
+Introduction We study the problem of optimizing the resilience of networks to various types of failures. Our approach applies to both digital networks (e.g., communication networks) and physical networks (e.g., road networks). In this paper, we focus on the latter, and describe a method to help decision makers use a limited budget to reinforce roads and make them more resistant to damage from ﬂoods. According to a recent report (Hallegatte et al. 2013), ﬂood damages for the 136 largest coastal cities around the globe could cost $1 trillion per year by 2050 without taking protective measures. Developing computational tools to help combat this problem is therefore an important task. This challenge has been tackled in the past, most notably as the Pre-disaster Transportation Network Preparation (PTNP) problem (Peeta et al. 2010; Schichl and Sellmann 2015). In this problem, an undirected graph is given where edges represent road segments and vertices represent intersections of multiple roads. Each edge has a ﬁxed travel time (or length) and can survive the disaster with a certain probability. If a road segment fails, it becomes impassable. Pre-disaster investment can increase the survival probability of a road segment. Given a budget limit, the goal is to select
+
+Copyright c 2016, Association for the Advancement of Artiﬁcial Intelligence (www.aaai.org). All rights reserved.
+
+a subset of edges to invest in so that the total expected travel time between a set of origin/destination (o/d) pairs is minimized. Optimization algorithms for PTNP have been developed and applied to practical problems. Previous works, however, suffer from two signiﬁcant limitations. First, the assumption that an edge has only two states passable or impassable is limiting. For example, a malfunctioning culvert may not disconnect the road completely, but can cause trafﬁc to experience a certain amount of delay. Hence, edge lengths can take on multiple different values. Second, although existing algorithms can produce optimal solutions, they can only scale up to networks of 1000 edges and 5 o/d pairs (Schichl and Sellmann 2015). In our application, the network contains 55687 edges and 5504 pairs. Existing algorithms do not scale to networks of this size and cannot handle edges with multiple possible lengths. To address the above limitations, we ﬁrst formulate a more general problem called Generalized Predisaster Transportation Network Preparation (GPTNP). Unlike PTNP, the problem is deﬁned on directed graphs, which are a better model for road networks. The length of an edge is a random variable with domain [0, ] where means that the edge is impassable. The investment on an edge makes its length stochastically shorter. This general deﬁnition allows us to model richer and more practical situations. We then create a very fast algorithm, based on the sample average approximation (SAA) (Sheldon et al. 2010; Wu, Sheldon, and Zilberstein 2015) and network design algorithms, to compute a high quality solution for the GPTNP problem in large-scale networks. In our algorithm, we recast the GPTNP problem as a deterministic optimization problem using the SAA method and a novel sampling procedure. With enough samples, the optimal solution to the deterministic problem approaches the optimal solution of the GPTNP problem (Kleywegt, Shapiro, and Homem-de Mello 2002). Then, the deterministic problem is formulated as a novel network design problem called Budget Set Weighted Shortest Path Steiner Graph (BSW-SPSG), composed of a directed graph and a budget limit. The goal is to purchase sets of edges to minimize the total shortest path length between a number of o/d pairs, subject to a budget constraint. The BSW-SPSG problem is NP-hard and, more importantly, the size of the constructed problem is usually very large. Consequently, even a greedy heuristic is too slow
+
+Proceedings of the Thirtieth AAAI Conference on Artificial Intelligence (AAAI-16)
+
+to tackle our target application. Hence, we propose a fast primal-dual algorithm to solve the BSW-SPSG problem approximately. The key idea is to ﬁrst use Lagrangian relaxation (Jain and Vazirani 2001; Kumar, Wu, and Zilberstein 2012) to fold the budget constraint into the objective, parameterized by a Lagrange multiplier β. The resulting problem is called Prize-Collecting Set Weighted Shortest Path Steiner Graph (PCSW-SPSG). A bisection procedure (Wu, Sheldon, and Zilberstein 2015) is then used to ﬁnd a value of β for which the near optimal solution of PCSW-SPSG is also a near optimal solution of the BSW-SPSG problem. Finally, we derive a primal-dual algorithm (Williamson and Shmoys 2011) to solve the PCSW-SPSG problem approximately. We demonstrate experimentally on a small existing benchmark that our our algorithm produces near optimal solutions to the BSW-SPSG problem and the SAA method converges quickly to the optimal solution of the original stochastic optimization problem. On a network of medium size, our algorithm performs as well as a greedy baseline, but it is 30 60 times faster. When applied to a full real-world road network, our algorithm is the only one that ﬁnds good solutions within a reasonable amount of time. We also show a BSW-SPSG problem where the greedy baseline performs poorly, but our algorithm ﬁnds near-optimal solutions. Another contribution of the paper is that our algorithm, with minor modiﬁcations, can solve two additional variants of the BSW-SPSG problem: the Quota Set Weighted Shortest Path Steiner Graph (QST-SPSG) problem and the PCSW-SPSG problem. The preﬁxes quota, budget, and prize-collecting describe standard variants of network design problems (Johnson, Minkoff, and Phillips 2000). The problems share the same basic setup, but have different constraints and objectives. In the QST-SPSG problem, the goal is to minimize cost while keeping the total shortest path length below a certain level. In the PCSW-SPSG problem, both total shortest path length and cost are in the objective, weighted by a tradeoff parameter β. We begin with a formal description of the GPTNP problem in Section 2. Section 3 introduces the SAA method and our sampling procedure. Section 4 deﬁnes the BSW-SPSG problem. Section 5 presents our solution method. Section 6 contains the experimental results and analysis.
+
+Problem Statement An instance of GPTNP includes a directed graph G=(V, E), where each edge e is associated with a travel time or length that is stochastically distributed within [0, ] ( indicates the edge is not passable). The length can be decreased stochastically at some cost ce. We are also given a set of pairs of vertices Θ = {(o1, d1), ..., (o T , d T )} (oi, di V ) and a budget limit B. The goal is to select a subset π E of edges, also called a policy, to invest subject to the budget limit B, so that the total expected shortest path length from o to d for all (o, d) Θ is minimized. The length of edge e is a random variable Le(π) whose distribution depends on π. We are given two cumulative distribution functions (CDF): He : [0, ] [0, 1] and Fe : [0, ] [0, 1] for the cases (e / π) and (e π) respectively. With investment, the length is stochastically shorter
+
+than the length without. This is modeled by the constraints Fe(l) He(l) for any l [0, ]. Let L(π) denote the random vector consisting of Le(π) for all e E. The GPTNP problem can be written as a stochastic optimization problem:
+
+(o,d) Θ EL(π) [SPL(o, d, L(π); G)] s.t.
+
+e π ce B (1)
+
+where SPL(o, d, L(π); G) represents the shortest path length from o to d when edge lengths are L(π). We also deﬁne a penalty Mo,d for a pair (o, d). If the shortest path length is , we set SPL(o, d, L(π); G) = Mo,d. In the above deﬁnition, we assume that the length of each edge is independently distributed, but our solution method can be modiﬂied slightly to deal with more complex settings in which lengths of multiple edges are correlated or one investment can affect multiple edges simultaneously. To extend our algorithm to these cases, only the sampling procedure needs to be modiﬁed; the bisection procedure and the primal-dual algorithm remain the same.
+
+Connection to the PTNP Problem The major difference between the PTNP (Peeta et al. 2010) and GPTNP problems is that in PTNP, the length of each edge is deﬁned by a binary random variable, that is, with probability pe, the edge has length le and with probability 1 pe, the edge is impassable or has length . Another difference is that PTNP is deﬁned on an undirected graph while GPTNP is deﬁned on a directed graph. In fact, our model is more general because an undirected edge is equivalent to two directed edges of equal length that share the same investment. As GPTNP is a more general problem, two complexity results established for the PTNP problem (Schichl and Sellmann 2015) immediately apply to the GPTNP problem. Theorem 1. The GPTNP problem is APX-hard and is neither subnor super-modular. We note that the GPTNP problem is also related to the continuous-time inﬂuence maximization problem (Rodriguez and Sch olkopf 2012; Du et al. 2013). The time of a vertex being infected can be considered as the shortest path length from the source to this vertex in our problem. Our problem suggests novel variants of inﬂuence maximization where it is possible to accelerate propagation by manipulating certain edges in addition to selecting diffusion sources (Khalil, Dilkina, and Song 2014).
+
+Sample Average Approximation We use the SAA method to recast the stochastic optimization problem (1) as a deterministic analogue using N scenarios that are generated by sampling from the underlying distribution. It has been shown (Kleywegt, Shapiro, and Homem-de Mello 2002) that as N goes to inﬁnity, the optimal solution of the deterministic problem converges to the optimal solution of the stochastic optimization problem. However, we can t directly sample L(π) as its distribution depends on π. Here, we introduce a new sampling method. The basic idea is that we deﬁne a new random graph G = (V, E , ξ) where ξ = {ξe|e E } and ξe is a random variable representing the length of edge e E . The distribution of ξe
+
+Figure 1: An example of creating the BSW-SPSG problem. The tuple (ei 2, 5) means the edge ei 2 has sampled length 5. The graph Gs contains all vertices and edges in gray. We have edge sets Ee = {ei 1, ei 2}, Ef = {f i 2} and E0 = {eo 1, eo 2} with c0 = 0 in the BSW-SPSG problem. If the o/d pair in the GPTNP is {u, w}, in BSW-SPSG, Θ = {(u1, w1), (u2, w2)}
+
+does not depend on any policy, so the sample of G can be drawn before applying policies. Then, we create the deterministic optimization problem using N samples of G . More speciﬁcally, in G , there are two parallel edges eo (original edge) and ei (invested edge) in E for each edge e E, with lengths ξeo and ξei respectively. We further deﬁne a random graph G (π) = {V, E (π), ξ} parameterized by policy π. This graph always includes the original edge (length ξeo) and will include the invested edge (length ξei) if and only if e = (u, v) π. If e / π, the distance from u to v is ξeo; we want this to have CDF He. If e π, the distance from u to v is min{ξeo, ξei}; we want this to have CDF Fe. To achieve this, for each edge e E, we deﬁne a uniform random variable Ue in the range [0, 1] and use it to deﬁne:
+
+ξeo = min l:He(l)=Uel, ξei = min l:Fe(l)=Uel (2)
+
+With this deﬁnition, we can sample the values of ξeo and ξei independently of any policy by inverse-transform sampling (Devroye 1986). First, a value of Ue is sampled to be the cumulative probability. Then, we pick the smallest lengths that have cumulative probability Ue from He and Fe respectively. If the function He or Fe is strictly increasing, we have ξeo = H 1 e (Ue) or ξei = F 1 e (Ue). Also, if He or Fe is a discrete CDF, the probability of any sampled value is nonzero. Now, we claim the following result. Theorem 2. For any ﬁxed policy π E and two vertices o, d V , the expected shortest path length from o to d in G (π) equals to EL(π) [SPL(o, d, L(π); G)] in (1). To summarize our SAA procedure: ﬁrst, we generate N samples of G , {G 1, ..., G N}, by sampling the value of Ue s and applying (2). In G k, edges have ﬁxed lengths. Then, we form the following deterministic optimization problem:
+
+min π E 1 N
+
+k=1 SPL(o, d, G k(π)) s.t.
+
+e π ce B (3)
+
+e Es dexod e ) + Mo,dzod (1)
+
+e δ+(S) xod e + zod 1 (o, d) Θs, S Sod o (2)
+
+i:e Ei yi xod e (o, d) Θs, e Es (3)
+
+Ei E ciyi B (4)
+
+xod e [0, 1] (o, d) Θs e Es (5)
+
+yi {0, 1} Ei E, zod {0, 1} (o, d) Θs (6)
+
+Figure 2: MIP of the budget BSW-SPSG problem
+
+where SPL(o, d, G k(π)) is the shortest path length from o to d in the sample G k(π). By theorem 2, for any policy, the objective of (3) converges to the objective of (1) as N goes to inﬁnity. In the next two sections, we formally deﬁne the problem (3) and give a fast algorithm for solving it.
+
+Set Weighted Shortest Path Steiner Graph Problem (3) can be formulated as a new network design problem called Budget Set Weighted Shortest Path Steiner Graph (BSW-SPSG). The input of a BSW-SPSG problem consists of a directed graph Gs = {V s, Es} where each edge has ﬁxed length le and a set of o/d pairs Θs = {(o1, d1), ..., (o T , d T )} (oi, di V s) where each pair is associated with a penalty Mo,d. We are also given a collection of edge sets E = {E1, ..., ES} where Ei Es and each Ei is associated with a cost ci. A subset A E corresponds to a subgraph Gs(A) = {V s, Es(A)} with Es(A) = Ei AEi. The goal is to purchase edge sets A, subject to a budget limit B, such that in Gs(A), the total shortest path length from o to d for all (o, d) Θs is minimized. That is,
+
+(o,d) Θs SPL(o, d, Gs(A)) s.t.
+
+Ei E ci B (4)
+
+where SPL(o, d, Gs(A)) is the shortest length path from o to d in Gs(A), set to be Mo,d if there is no path from o to d. To write problem (3) as a BSW-SPSG problem, we combine N sampled graphs {G 1, ..., G N} of G into a single graph Gs with appropriate edge sets E. The vertex set of Gs is the union of those from the samples {G i}. The edges of Gs include original edges {eo k} and invested edges {ei k} of all samples. For each edge e in G, the invested edges of ﬁnite length (from all samples) are grouped into an edge set Ee with cost ce. The unimproved edges of ﬁnite length for all edges in G are grouped into an additional edge set E0 of zero cost. Finally, let set Θs contain o/d pairs in all sampled graphs. An example is shown in Fig. 1. The BSW-SPSG problem can be formulated as a Mixed Integer Program (MIP) shown in Fig. 2. A binary variable xod e is deﬁned for each edge e E and o/d pair indicating whether e is on (=1) the shortest path from o to d or not (=0). A binary decision variable yi is deﬁned for each edge set Ei E indicating whether the set is purchased (=1)
+
+Prize-Collecting Problem / Primal Problem:
+
+e E dexod e ) + Mo,dzod
+
+Ei E ciyi B
+
+s.t. x, y satisfy constraints (2), (3), (5), (6) in Fig. 2 (2)
+
+Dual Problem:
+
+(o,d) Θs,S Sod o
+
+S:e δ+(S),S Sod s
+
+μod S λod e de (o, d) Θs, e E (4)
+
+μod S Mo,d (o, d) Θs (5)
+
+e Ei λod e βci Ei E (6)
+
+Figure 3: Primal and dual of the prize-collecting problem
+
+or not (=0). All yis deﬁne a set A. A binary variable zod is deﬁned for each o/d pair indicating whether the pair is penalized/disconnected (=1) or not/connected (=0). Let set Sod o consist of all subsets of V that contain o but not d, Sod o = {S|S V o S d / S}. Let set δ+(S) contain all outgoing cut edges of S, that is, δ+(S) = {(u, v)|(u, v) E u S v / S}. With constraint (2), if d is connected to o (zod = 0), at least one cut edge e for any set in Sod o should have value xod e = 1. With constraint (3), an edge is on the shortest path from o to d only if it is purchased. Constraint (4) is the budget constraint. It is easy to show that relaxing binary variable x into continuous variable in [0, 1] will not change the value of the optimal solutions.
+
+Proposition 1. The BSW-SPSG problem is NP-hard and its objective function is neither subnor super-modular.
+
+Our Algorithm for the BSW-SPSG problem
+
+In this section, we present the algorithms to solve both BSWSPSG and the prize-collecting problem (PCSW-SPSG). To solve BSW-SPSG problem, we ﬁrst create a PCSWSPSG problem by folding the budget constraint into the objective with a β based on Lagrangian relaxation method (Kumar, Wu, and Zilberstein 2012; Jain and Vazirani 2001). The MIP of PCSW-SPSG is shown in Fig. 3. Then, we use the bisection procedure to ﬁnd a β such that by solving the prizecollecting problem with β, we obtain a high-quality solution of the budget problem. In the bisection procedure, we start with a large interval of β and halve it iteratively until narrow enough. At each iteration, a solution is found by solving the prize-collecting problem with β. If the cost of the solution is greater than B, the lower half of the interval is abandoned. Otherwise, the higher half is abandoned. The details of this method are in (Wu, Sheldon, and Zilberstein 2015).
+
+Algorithm 1 Primal-Dual Algorithm
+
+1: function PRIMALDUAL(Gs, E, β) 2: Set yi 0 Ei E and zod 0 (o, d) Θs
+
+3: F φ 4: For each pair (o, d), the set Cod contains all vertices reachable from o in (V s, F) 5: Initially, Cod = {o} for each (o, d) 6: Mark all o/d pairs as active 7: while there exists some active pairs do 8: Increase μod Cod of all active pairs simultaneously. If (4) in Fig. 3 becomes tight for edge e, increase λod e to maintain feasibility until 9: if (5) in Fig. 3 becomes tight for (o, d) then, 10: Mark (o, d) abandoned and set zod = 1 11: else (6) in Fig. 3 becomes tight for Ei 12: set yi = 1 and F F e 13: for each active (o, d) do 14: expand Cod by e 15: end for 16: if Cod contains d for some (o, d) then 17: Mark (o, d) connected 18: end if 19: end if 20: end while 21: For each connected (o, d), ﬁnd the shortest path in (V s, F) 22: for each Ei with yi = 1 do 23: if there are no shortest paths using edges in Ei then 24: yi 0 25: end if 26: end for 27: return y 28: end function
+
+Solving the Prize-Collecting Problem To scale up to large networks, we derive a fast primal-dual algorithm, shown in Algorithm 1, to solve the PCSW-SPSG problem approximately. Fig. 3 gives the dual formulation of the LP relaxation of the prize-collecting problem. The algorithm borrows ideas from the primal-dual algorithms of the single pair shortest path problem and the generalized Steiner tree problem (Williamson and Shmoys 2011). The basic idea is to repeatedly increase the dual objective by increasing the value of dual variables and simultaneously construct a feasible primal solution based on the primal complementary slackness condition (Vazirani 2003).
+
+Deﬁnition 1. Primal Complementary Slackness Condition xod e = 1, zod = 1 and yi = 1 imply equality in constaints (4), (5) and (6) in Fig. 3 respectively.
+
+Lines 2-20 of Algorithm 1 are the major primal-dual procedure. We start with an infeasible primal solution where all x, y, z variables are 0, an empty graph (V s, F) where F = φ and a feasible dual solution where all μ and λ are 0. The graph (V s, F) represents the primal solution: F contains e if xod e = 1 for any o/d pair. The loop (lines 7-20) proceeds until each (o, d) is either abandoned (zod = 1) or connected where we get a feasible primal solution by satisfying (2) in Fig. 2. Note that (3) in Fig. 2 is always satisﬁed as we proceed. A pair is active meaning that constraint (2) of this pair is violated for some S. To satisfy (2) for all S Sod o , at
+
+each iteration, we only increase the dual variable of the set S Sod o with the smallest number of vertices for which the constraint (2) is violated. This smallest set is Cod deﬁned at line 4. At each iteration, we increase the dual variable of Cod for all (o, d) simultaneously (line 8). If the constraint (4) in Fig. 3 becomes tight for some e, by the slackness condition, we want to add e in to F (set xod e = 1), but e may not be purchased yet. So, we continue increasing both μod Cod and λst e with the same speed until following cases happen. If (5) in Fig. 3 becomes tight for some (o, d), by the slackness condition, we set zod = 1 and never consider this pair again because all constraints (2) in Fig. 2 that involve this pair are satisﬁed (line 10). If constraint (6) in Fig. 3 becomes tight for some Ei, we set yi = 1. Also, we know e is purchased and can be added into F (line 12). At line 14, we update Cod with the newly added edge. At line 16, d Cod means the pair is connected. In lines 21-30, the unused edge sets are removed. Only the edge sets that are used by the shortest path of connected pairs are purchased.
+
+Proposition 2. The running time of Algorithm 1 is bounded by O (|Es| + |E| + |Θs|)2 + |Θs| |Es| log |V s| .
+
+To analyze the running time of solving GPTNP by reducing it to BSW-SPSG, let N be number of samples, and K be the number of iterations in the bisection procedure. Then, in the constructed BSW-SPSG problem, there are at most 2N |E| edges (i.e., |Es| 2N |E|), |Θs| = N |Θ| o/d pairs, and |E| |E|. As the primal-dual algorithm is invoked K times by the bisection procedure, by plugging the above terms into the bound in Proposition 2, we have:
+
+Proposition 3. The running time of solving a GPTNP problem is O K N 2 (|E| + |Θ|)2 + K N |Θ| |E| log |V | .
+
+To analyze the complexity of the natural greedy algorithm, let K be the number of edges selected for investment by the greedy algorithm. Then, we have
+
+Proposition 4. The runtime of a greedy algorithm is bounded by O K N |E| |Θ| |E| log |V | .
+
+In the experiments, we observed that a small number of samples (e.g., N 30) is sufﬁcient for convergence. If we assume that N is a constant, |E| |Θ|, and |E| = Θ(|E|), the running time for our algorithm is O(K |E|2 log |V |), and the running time for the greedy algorithm is O K |Θ| |E|2 log |V | , implying that our
+
+algorithm is asymptotically O( K |Θ|
+
+K ) times faster than the greedy algorithm. On our largest network with |Θ| = 5504, a small value of K (e.g., a number between 20 and 30) is sufﬁcient to make the range of β narrow enough in our algorithm, and in the greedy algorithm, K is a number between 200 and 300. We observed that our algorithm is about 400 times faster than the greedy algorithm.
+
+Experimental Results Theoretically, the convergence of the SAA method is guaranteed as the number of samples N goes to inﬁnity. In practice, a small number of samples may be enough for convergence. In our experiments, we treat our optimization algorithm as the training step and the samples used by SAA
+
+160 170 180 190 200 210 220
+
+100 110 120 130 140
+
+50 100 150 200 50 60 70 80 90
+
+Training Sample Size (a) Training
+
+160 170 180 190 200 210 220
+
+100 110 120 130 140
+
+10 50 100 150 200 50 60 70 80 90
+
+Training Sample Size (b) Testing
+
+Figure 4: Istanbul Prep benchmark. Y-axis: path lengths.
+
+as training samples. We use training samples to create a BSW-SPSG problem and compare the performance of our algorithm in optimizing this BSW-SPSG problem against other existing algorithms. However, an optimal solution to the training samples may perform poorly in minimizing the expected travel time when N is not big enough. To evaluate the actual performance of policies produced in the training step and also determine how many training samples are enough for convergence, we conduct a testing step. In testing, we draw another group of samples as testing samples and calculate, for a policy, the average travel time as a testing value. The testing value of a policy is an unbiased estimate of its expected travel time. As N increases, the convergence of the testing value is a good indicator that SAA converges. We experimented on two different domains, using a 2.2GHz Intel Core i7 CPU with 16GB of RAM.
+
+Istanbul Earthquake Preparation
+
+We ﬁrst used a small benchmark called Istanbul Earthquake Preparation (Peeta et al. 2010). The goal is to minimize the total shortest path length between 5 o/d pairs. The network contains 30 undirected edges. Each edge has binary length distribution. The survival probability can be raised to 1.0 with investment. We used the basic settings described by Peeta et al. (2010), with Mo,d =120. On this small problem, we only report solution quality. In Fig. 4, we compare our algorithm, the greedy algorithm and the mixed integer program (MIP) with three budget sizes (10%, 20% and 30%) where MIP is an optimal solver. In testing, we use 10000 samples to evaluate policies produced in the training step. We also add the optimal expected values (green) as comparisons, which are reported by (Schichl and Sellmann 2015). In training, Our and Greedy produce near optimal solutions in most of the cases. In testing, except for several cases for Greedy , all algorithms produce near-optimal testing values. For the 10% budget case, the testing value is better than the optimal expected value; this indicates a slight discrepancy in problem setting from previous work. The training value of each algorithm is always smaller than the testing value due to overﬁtting. Also, varying the sample size from 10 to 200 barely impacts the testing value, which implies that 10 training samples are enough for convergence.
+
+Figure 5: The road network showing patient locations (blue dots), hospital (red dot), and ambulance dispatch locations (green dots). The road network showing patient locations (blue), hospital (red), and ambulance dispatch locations (green).
+
+Flood Preparation for EMS Roadway stream crossing structures, such as culverts, become vulnerable to ﬂoods as climate changes. The failure of crossing structures causes road segments to ﬂood or wash out, which causes trafﬁc delay or even make roads impassable. Money can be invested to increase the resilience of crossings. The goal is to decide which crossings to invest in, subject to a budget limit, so that the total travel time of certain o/d pairs is minimized. In this problem, we focus only on travel time of emergency medical services (EMS). We obtained relevant data for the road network of the Deerﬁeld river watershed in Massachusetts. In our dataset, an o/d pair represents a request of ambulance from o (ambulance center/patient address) to d (patient address/hospital). We obtain such pairs from actual EMS calls recorded over the past 5 years. The road network, shown in Fig. 5, contains 55687 edges, 1366 crossings (not shown) and 5504 o/d pairs. To conduct the experiments, we used the following assumptions. The length of an edge corresponds to travel time and is calculated by le = road length
+
+speed limit . Each crossing has a survival probability pe in the range [0.2 0.4]. An edge, if associated with a crossing, has length le with probability pe and has length with probability 1 pe. pe is raised to 1.0 if the corresponding crossing is ﬁxed. We used a constant investment cost for all crossings. The penalty Mo,d of each disconnected pair was set to be 15 times the shortest travel time from o to d when no crossings fail.
+
+Sub-Network We compare SAA and the greedy baseline on a sub-network with 10037 edges and 248 crossings. MIP failed to ﬁnish within a reasonable amount of time for this dataset. The results are shown in Fig. 6. In training, we use 10 samples, two budget sizes and various numbers of o/d pairs. For 10% budget, Greedy performs slightly better, but the value of our algorithm is within 1.3 times the value of Greedy . For 20% budget, both algorithms perform the
+
+100 150 200 250 300 0
+
+Number of o/d Pairs (a) Training
+
+Our Our30 Our60 Greedy
+
+100 150 200 250 300 0
+
+Number of o/d Pairs
+
+Our Our30 Our60 Greedy
+
+(b) Testing
+
+Figure 6: Performance on the sub-network for ﬂood preparation. Y-axis represents total travel time ( 104 seconds).
+
+100 150 200 250 300 0
+
+Number of o/d Pairs
+
+Figure 7: Training time (mins) on the sub-network.
+
+0 5 10 15 20 25 30 0
+
+Travel Time (s)
+
+Number of Pairs
+
+Our Greedy MIP
+
+Figure 8: Network with survival probabilities 0.
+
+same in most cases. In terms of runtime, shown in Fig. 7, our algorithm is signiﬁcantly faster. In testing, we use 100 testing samples and evaluate the policies produced by different number of training samples. For example, Our30 represents the policy trained on 30 samples by our algorithm. The policy of Greedy is trained on 10 samples due to its limited scalability. Again, for 10% budget, the policy produced by Greedy gives slightly better testing value. For 20% budget, all policies basically perform the same, implying that 10 samples are enough for convergence. Overall, the results show that our algorithm performs similarly well or a little worse in some cases compared to the greedy algorithm, but it is signiﬁcantly faster and can scale up to larger problems.
+
+Complete Network We also tested on the complete road network using 10 training samples and 100 testing samples. In this case, it is not feasible to run the greedy algorithm; one iteration takes more than 10 hours. Instead, we compared with two other methods. The results are shown in Table 1. The Random method selects a policy by randomly picking crossings to ﬁx until the budget is exhausted. We let the algorithm repeatedly generate and test policies over 10 hours and report the best one. The M-Greedy method is the same as the greedy algorithm except that, at each iteration, it only re-evaluates the top 10 crossings that gave the best travel time reduction in the previous iteration. We only show the result of M-Greedy for 10% budget, which already takes 46 hours. By the table, our algorithm runs faster and produces the best training and testing values. To the best of our knowledge, our algorithm is the only known method
+
+Algorithm Budget Train ( 106s) Time (h) Test ( 106s)
+
+Our 10% 9.8 6.1 9.8 Random 10% 24.5 13 24.4 M-Greedy 10% 11.2 46.2 11.4
+
+Our 20% 3.6 7.3 3.6 Random 20% 19.7 16.3 19.8
+
+Table 1: Experiments on the complete road network of the Deerﬁeld river watershed
+
+that can solve this problem and produce good solutions.
+
+Experiments in More Challenging Settings As shown above, the greedy algorithm performs quite well in training in terms of solution quality. We believe one reason for this is that many o/d pairs are close to each other and the survival probabilities of crossings are relatively high, so, with high probability, at most one or two crossings fail on any o/d path. This means that coordinated repairs of multiple crossings are not necessary to realize improvements, and the greedy algorithm can achieve good performance by repairing crossings incrementally in a myopic way. Intuitively, the greedy strategy will fail when o/d paths experience multiple failures, so repairing any single crossing provides no beneﬁt. To model this, we designed a BSW-SPSG problem where all survival probabilities start out equal to zero. We used a small problem for which it is possible to ﬁnd optimal solutions by solving a MIP. The results in Fig. 8 show that the greedy algorithm performs poorly in this case, while our algorithm produces near optimal solutions.
+
+Conclusion We propose a general decision making framework and a fast approximate algorithm for optimizing the resilience of networks to various failures. Compared to previous work, our framework allows for richer problems to be represented, with arbitrary length distributions over edges. We construct the approximation method by deriving a sampling method and a primal-dual algorithm. Empirically, our algorithm produces near optimal solutions on a benchmark problem. It perform as well as a greedy baseline on a mid-size network, but is signiﬁcantly faster. Most importantly, our algorithm scales well and can solve a larger practical problem that no other existing algorithm can solve. It is also robust to varying network conditions and produces a near optimal solution for a challenging problem on which the baseline greedy algorithm performs poorly. Finally, our work offers a good foundation for exploring several related problems, particularly the continuous time inﬂuence maximization problem that we plan to study in future work.
+
+Acknowledgements We thank Joshua Shanley for providing the EMS call records and Scott Jackson for providing the culvert data and helping with the modeling and interpretation of the data. This project was funded in part by the Massachusetts Department of Transportation through ISA 114-118531 for grant No. 83226.
+
+References Devroye, L. 1986. Non-uniform random variate generation. Springer. Du, N.; Song, L.; Gomez-Rodriguez, M.; and Zha, H. 2013. Scalable inﬂuence estimation in continuous-time diffusion networks. In Advances in Neural Information Processing Systems (NIPS), 3147 3155. Hallegatte, S.; Green, C.; Nicholls, R. J.; and Corfee-Morlot, J. 2013. Future ﬂood losses in major coastal cities. Nature Climate Change 3:802 806. Jain, K., and Vazirani, V. V. 2001. Approximation algorithms for metric facility location and k-median problems using the primal-dual schema and Lagrangian relaxation. Journal of the ACM (JACM) 48(2):274 296. Johnson, D. S.; Minkoff, M.; and Phillips, S. 2000. The prize collecting Steiner tree problem: Theory and practice. In Proceedings of the 11th Annual ACM-SIAM Symposium on Discrete Algorithms, 760 769. Khalil, E. B.; Dilkina, B.; and Song, L. 2014. Scalable diffusion-aware optimization of network topology. In Proceedings of the 20th ACM SIGKDD international conference on Knowledge discovery and data mining, 1226 1235. ACM. Kleywegt, A. J.; Shapiro, A.; and Homem-de Mello, T. 2002. The sample average approximation method for stochastic discrete optimization. SIAM Journal on Optimization 12:479 502. Kumar, A.; Wu, X.; and Zilberstein, S. 2012. Lagrangian relaxation techniques for scalable spatial conservation planning. In Proceedings of the 26th Conference on Artiﬁcial Intelligence (AAAI), 309 315. Peeta, S.; Sibel Salman, F.; Gunnec, D.; and Viswanath, K. 2010. Pre-disaster investment decisions for strengthening a highway network. Computers and Operations Research 37(10):1708 1719. Rodriguez, M. G., and Sch olkopf, B. 2012. Inﬂuence maximization in continuous time diffusion networks. In Langford, J., and Pineau, J., eds., Proceedings of the 29th International Conference on Machine Learning (ICML), 313 320. Schichl, H., and Sellmann, M. 2015. Predisaster preparation of transportation networks. In Proceedings of the 29th AAAI Conference on Artiﬁcial Intelligence (AAAI), 709 715. Sheldon, D.; Dilkina, B.; Elmachtoub, A.; Finseth, R.; Sabharwal, A.; Conrad, J.; Gomes, C.; Shmoys, D.; Allen, W.; Amundsen, O.; and Vaughan, W. 2010. Maximizing the spread of cascades using network design. In Proceedings of the 26th Conference on Uncertainty in Artiﬁcial Intelligence (UAI), 517 526. Vazirani, V. 2003. Approximation Algorithms. Springer. Williamson, D. P., and Shmoys, D. B. 2011. The design of approximation algorithms. Cambridge University Press. Wu, X.; Sheldon, D.; and Zilberstein, S. 2015. Fast combinatorial algorithm for optimizing the spread of cascades. In Proceedings of the 24th International Joint Conference on Artiﬁcial Intelligence (IJCAI), 2655 2661.
+
